@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>استمارة ساعة المعرفة</title>
+
+  <!-- Bootstrap + Chart.js + SheetJS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4fafd;
+      padding: 0;
+      margin: 0;
+    }
+    #loginScreen {
+      height: 100vh;
+      background: #002147;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    #mainContent {
+      display: none;
+      padding: 20px;
+    }
+    .form-control, .btn {
+      border-radius: 8px;
+    }
+    .logo-header {
+      background: #001c3d;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: white;
+      border-bottom: 3px solid #00bcd4;
+    }
+    .logo-header img {
+      height: 50px;
+    }
+    footer {
+      text-align: center;
+      color: #888;
+      font-size: 0.9em;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ✅ شاشة تسجيل الدخول -->
+<div id="loginScreen">
+  <img src="logo.png" alt="شعار الأمانة العامة" style="max-height: 100px;" class="mb-4" />
+  <h3>تسجيل الدخول</h3>
+  <div class="form-group mt-3 w-25">
+    <input type="text" id="username" class="form-control mb-2" placeholder="اسم المستخدم" />
+    <input type="password" id="password" class="form-control mb-3" placeholder="كلمة المرور" />
+    <button class="btn btn-light w-100" onclick="login()">دخول</button>
+  </div>
+</div>
+
+<!-- ✅ المحتوى الرئيسي -->
+<div id="mainContent">
+  <div class="logo-header">
+    <img src="logo.png" alt="شعار" />
+    <div>
+      👤 <strong id="userDisplay">ICV</strong>
+      <button onclick="logout()" class="btn btn-sm btn-danger ms-2">تسجيل الخروج</button>
+    </div>
+  </div>
+  <div class="container mt-4">
+    <ul class="nav nav-tabs">
+      <li class="nav-item">
+        <a class="nav-link active" data-bs-toggle="tab" href="#formTab">الاستمارة</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" data-bs-toggle="tab" href="#dashboardTab">الداشبورد</a>
+      </li>
+    </ul>
+
+    <div class="tab-content mt-3">
+      <!-- ✅ تبويب الاستمارة -->
+      <div class="tab-pane fade show active" id="formTab">
+        <form id="dataForm" onsubmit="return false;">
+          <div class="row g-3">
+            <div class="col-md-6"><input class="form-control" placeholder="اسم الفعالية" id="eventName" required /></div>
+            <div class="col-md-6"><input class="form-control" placeholder="نوعها" id="eventType" required /></div>
+            <div class="col-md-6"><input class="form-control" placeholder="الجهة المنفذة" id="executingBody" /></div>
+            <div class="col-md-6"><input class="form-control" placeholder="الجهة المستهدفة" id="targetBody" /></div>
+            <div class="col-md-6"><input type="date" class="form-control" id="eventDate" /></div>
+            <div class="col-md-6"><input class="form-control" placeholder="الوقت المحدد" id="timeSlot" /></div>
+            <div class="col-md-6"><input type="number" class="form-control" placeholder="عدد الحضور" id="attendance" /></div>
+            <div class="col-md-6"><input class="form-control" placeholder="ملاحظات" id="notes" /></div>
+          </div>
+          <button type="button" class="btn btn-success mt-4 px-4" id="submitBtn">➕ إضافة</button>
+        </form>
+
+        <hr />
+        <table class="table table-bordered table-hover mt-3" id="dataTable">
+          <thead class="table-primary text-center">
+            <tr>
+              <th>م</th><th>اسم الفعالية</th><th>نوعها</th><th>الجهة المنفذة</th><th>الجهة المستهدفة</th><th>التاريخ</th><th>الوقت</th><th>عدد الحضور</th><th>ملاحظات</th><th>إجراء</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+
+        <div class="mt-4 text-center">
+          <button class="btn btn-outline-primary me-2" onclick="exportToExcel()">📥 تصدير إلى Excel</button>
+          <button class="btn btn-outline-dark" onclick="printReport()">🖨️ طباعة التقرير</button>
+        </div>
+      </div>
+      <!-- ✅ تبويب الداشبورد -->
+      <div class="tab-pane fade" id="dashboardTab">
+        <div class="row mt-4">
+          <div class="col-md-6">
+            <h5 class="text-center">📊 نسبة الفعاليات حسب النوع</h5>
+            <canvas id="chartType"></canvas>
+          </div>
+          <div class="col-md-6">
+            <h5 class="text-center">📊 عدد الحضور لكل فعالية</h5>
+            <canvas id="chartAttendance"></canvas>
+          </div>
+          <div class="col-md-12 mt-4">
+            <h5 class="text-center">📊 عدد الفعاليات حسب الجهة المستهدفة</h5>
+            <canvas id="chartTarget"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>© المكتب الوطني للمحتوى المحلي @2025</footer>
+  </div>
+</div>
+<script>
+  const submitBtn = document.getElementById("submitBtn");
+  const tableBody = document.querySelector("#dataTable tbody");
+  let data = JSON.parse(localStorage.getItem("knowledgeData")) || [];
+  let rowIndex = data.length ? Math.max(...data.map(d => d.id)) + 1 : 1;
+  let editMode = false;
+  let editId = null;
+
+  function login() {
+    const u = document.getElementById("username").value.trim();
+    const p = document.getElementById("password").value.trim();
+    if (u === "ICV" && p === "Oman@12345") {
+      document.getElementById("loginScreen").style.display = "none";
+      document.getElementById("mainContent").style.display = "block";
+      document.getElementById("userDisplay").textContent = u;
+      renderTable();
+      updateDashboard();
+    } else {
+      alert("اسم المستخدم أو كلمة المرور غير صحيحة");
+    }
+  }
+
+  function logout() {
+    location.reload();
+  }
+
+  submitBtn.addEventListener("click", function () {
+    const entry = getFormData(editId);
+    if (!entry) return;
+
+    if (editMode) {
+      data = data.map(d => d.id === editId ? entry : d);
+      editMode = false;
+      editId = null;
+      submitBtn.textContent = "➕ إضافة";
+      renderTable();
+    } else {
+      data.push(entry);
+      appendRow(entry);
+    }
+
+    saveData();
+    document.getElementById("dataForm").reset();
+    updateDashboard();
+  });
+
+  function getFormData(editId = null) {
+    const eventName = document.getElementById("eventName").value.trim();
+    const eventType = document.getElementById("eventType").value.trim();
+    const executingBody = document.getElementById("executingBody").value.trim();
+    const targetBody = document.getElementById("targetBody").value.trim();
+    const eventDate = document.getElementById("eventDate").value;
+    const timeSlot = document.getElementById("timeSlot").value.trim();
+    const attendance = document.getElementById("attendance").value;
+    const notes = document.getElementById("notes").value.trim();
+
+    if (!eventName || !eventType) {
+      alert("يرجى تعبئة اسم الفعالية ونوعها");
+      return null;
+    }
+
+    return {
+      id: editId || rowIndex++,
+      eventName,
+      eventType,
+      executingBody,
+      targetBody,
+      eventDate,
+      timeSlot,
+      attendance,
+      notes
+    };
+  }
+
+  function appendRow(entry) {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${entry.id}</td><td>${entry.eventName}</td><td>${entry.eventType}</td>
+      <td>${entry.executingBody}</td><td>${entry.targetBody}</td>
+      <td>${entry.eventDate}</td><td>${entry.timeSlot}</td><td>${entry.attendance}</td>
+      <td>${entry.notes}</td>
+      <td>
+        <button class="btn btn-warning btn-sm me-1" onclick="editRow(${entry.id})">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteRow(${entry.id})">🗑</button>
+      </td>
+    `;
+    row.dataset.id = entry.id;
+    tableBody.appendChild(row);
+  }
+
+  function renderTable() {
+    tableBody.innerHTML = "";
+    data.forEach(entry => appendRow(entry));
+  }
+
+  function deleteRow(id) {
+    data = data.filter(d => d.id !== id);
+    saveData();
+    renderTable();
+    updateDashboard();
+  }
+
+  function editRow(id) {
+    const entry = data.find(d => d.id === id);
+    if (!entry) return;
+
+    document.getElementById("eventName").value = entry.eventName;
+    document.getElementById("eventType").value = entry.eventType;
+    document.getElementById("executingBody").value = entry.executingBody;
+    document.getElementById("targetBody").value = entry.targetBody;
+    document.getElementById("eventDate").value = entry.eventDate;
+    document.getElementById("timeSlot").value = entry.timeSlot;
+    document.getElementById("attendance").value = entry.attendance;
+    document.getElementById("notes").value = entry.notes;
+
+    editMode = true;
+    editId = id;
+    submitBtn.textContent = "💾 حفظ التعديل";
+  }
+
+  function saveData() {
+    localStorage.setItem("knowledgeData", JSON.stringify(data));
+  }
+
+  function updateDashboard() {
+    const typeCounts = {}, attendanceCounts = {}, targetCounts = {};
+    data.forEach(entry => {
+      typeCounts[entry.eventType] = (typeCounts[entry.eventType] || 0) + 1;
+      attendanceCounts[entry.eventName] = parseInt(entry.attendance) || 0;
+      targetCounts[entry.targetBody] = (targetCounts[entry.targetBody] || 0) + 1;
+    });
+    drawChart("chartType", "pie", typeCounts, 'نوع الفعاليات');
+    drawChart("chartAttendance", "bar", attendanceCounts, 'عدد الحضور');
+    drawChart("chartTarget", "bar", targetCounts, 'الجهة المستهدفة', true);
+  }
+
+  function drawChart(id, type, dataMap, label, horizontal = false) {
+    const ctx = document.getElementById(id);
+    if (ctx.chart) ctx.chart.destroy();
+    ctx.chart = new Chart(ctx, {
+      type: type,
+      data: {
+        labels: Object.keys(dataMap),
+        datasets: [{
+          label: label,
+          data: Object.values(dataMap),
+          backgroundColor: ["#4FC3F7", "#81C784", "#FFB74D", "#E57373"]
+        }]
+      },
+      options: {
+        indexAxis: horizontal ? 'y' : 'x',
+        responsive: true,
+        scales: type !== "pie" ? { y: { beginAtZero: true } } : {}
+      }
+    });
+  }
+
+  function exportToExcel() {
+    const wb = XLSX.utils.book_new();
+    const ws_data = [["م", "اسم الفعالية", "نوعها", "الجهة المنفذة", "الجهة المستهدفة", "التاريخ", "الوقت", "عدد الحضور", "ملاحظات"]];
+    data.forEach(entry => {
+      ws_data.push([entry.id, entry.eventName, entry.eventType, entry.executingBody, entry.targetBody, entry.eventDate, entry.timeSlot, entry.attendance, entry.notes]);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    XLSX.utils.book_append_sheet(wb, ws, "الفعاليات");
+    XLSX.writeFile(wb, "سجل_ساعة_المعرفة.xlsx");
+  }
+
+  function printReport() {
+    const original = document.body.innerHTML;
+    const report = document.querySelector(".tab-content").innerHTML;
+    const style = `<style>body{direction:rtl;font-family:'Segoe UI'}table,th,td{border:1px solid #999;border-collapse:collapse;padding:6px;text-align:center}canvas{page-break-inside:avoid;margin-bottom:20px}</style>`;
+    document.body.innerHTML = style + report;
+    window.print();
+    document.body.innerHTML = original;
+    location.reload();
+  }
+</script>
+</body>
+</html>
